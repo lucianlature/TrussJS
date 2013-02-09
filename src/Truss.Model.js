@@ -1,6 +1,7 @@
 define( function ( require, exports, module ) {
 
-	var Truss = require( 'src/Truss' ).Truss,
+	var Truss = require ( 'src/Truss' ).Truss,
+
 		constants = {
 			ID: 1,
 			ORIGID: 1,
@@ -15,20 +16,24 @@ define( function ( require, exports, module ) {
 		constants.ID = constants.ORIGID;
 	}
 
+	var Model = Truss.construct({
 
-    Truss.Model = Truss.construct({
-
-    	start: function () {
-    		this.id = getNewId();
+    start: function () {
+    	this.id = getNewId();
 			this.resetId = resetId;
 		},
 
-		get: function (name) {
-			return this[name] || this.options[name];
-		}	
+		get: function ( name ) {
+			return this[ name ] || this.options[ name ];
+		},
+
+		set: function ( name, value ) {
+			this[ name ] = value;
+		} 
 
 	});
 
-  exports.Model = Truss.Model;
+	// Export Model
+  exports.Model = Model;
 
-} );
+});

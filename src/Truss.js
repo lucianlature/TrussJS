@@ -1,29 +1,15 @@
-/*jslint bitwise: true, continue: true, eqeq: true, 
-es5: true, forin: true, nomen: true, plusplus: true, 
-sloppy: true, browser: true, node: true, indent: 2 */
-
 define( function ( require, exports, module ) {
 
-  function isObject (o) {
-    return Object.prototype.toString.call(o) === "[object Object]";
-  }
+  var EventEmitter = require ( 'src/Truss.EventEmitter' ),
 
-  function isDefined (o) {
-    return "undefined" != typeof o;
-  }
-
-  function hasOwn(o, p) {
-    return o.hasOwnProperty(p);
-  }
-
-  function realTypeOf (o) {
-    return Object.prototype.toString.call(o).match(/\w+/g)[1].toLowerCase();
-  }
-
-  // Truss is a constructor
-  function Truss (options) {
-
-    this.events = {};
+  /**
+   * @constructor
+   * @description
+   * -> Core of Truss framework
+   * @param {Object} options
+   * @return {this}
+   */
+  Truss = function ( options ) {
 
     // Add any arguments to this.options
     if ( "undefined" != typeof options ) {
@@ -35,134 +21,62 @@ define( function ( require, exports, module ) {
       this.start( options );
     }
 
-  }
-
-  Truss.prototype = {
-
-    on: function (event, callback, context) {
-
-      if ( "function" !== typeof callback ) {
-
-        throw new Error("on() needs a callback function");
-
-      }
-
-      if ( !this.events[event] ) {
-        this.events[event] = [];
-      }
-
-      this.events[event].push({ 
-        callback: callback, 
-        context: context 
-      });
-
-    },
-
-    reset: function () {
-      this.events = {};
-    },
-
-    off: function (event, callback) {
-
-      if ( "string" != typeof event ) {
-        throw new Error("off() needs an event");
-      }
-
-      if ( this.events[event] ) {
-
-        var ev = this.events[event], len = ev.length;
-
-        while (len--) {
-
-          if ( "function" != typeof callback ) {
-            // If no callback was given, remove the event
-            // and all its callbacks
-            ev.splice(len, 1);
-
-          } else {
-            // If a callback was passed, 
-            // remove the callback from the event
-            if ( ev[len].callback === callback ) {
-
-              ev[len].callback = null;
-
-              delete ev[len].callback;
-            
-            }
-
-          }
-
-        } 
-
-      }  
-
-    },
-
-    fire: function (event, data, context) {
-
-      if (!event) {
-        throw new Error("fire() needs an event");
-      }
-
-      if ( this.events[event] ) {
-
-        var ev, events = this.events[event], len = events.length;
-
-        while ( len-- ) {
-
-          ev = events[len];
-
-          if ("function" == typeof ev.callback) {
-            // Invoke the callback in either context provided with data
-            ev.callback.call( ( context || ev.context || this ), data );
-
-          }
-
-        }
-
-      }
-
-    }
-
   };
 
-  // Construct is the static inheritance function
-  var construct = function (proto) {
-
-    var j, 
-      i, 
-      parent = this, 
-      other = {};
-
-    // Add all proto properties to the parent prototype
-    for (j in parent.prototype) {
-      other[j] = parent.prototype[j];
+  /**
+   * @static
+   * @description
+   * -> Takes two objects and applies all proprties from one to the other.
+   * @param {Object} dest
+   * @param {Object} source
+   * @return {Object} augmented dest
+   */
+  Truss.mixin = function( dest, source, deep ) {
+    for (var property in source) {
+      // Iterate over all source properties
+      if ( deep && "object" == typeof source[property] ) {
+        dest[property] = dest[property] || {};
+        // If the value is an object itself, then we need to recurse
+        // to to perform a deep copy; Objects copy by refernce
+        Truss.mixin( dest[property], source[property] );
+      } else {
+        // Assign the value form the source to the destination
+        dest[property] = source[property];
+      }
     }
+    return dest;
+  },
 
-    for (i in proto) {
-      other[i] = proto[i];
-    }
+  /**
+   * @static
+   * @description
+   * -> Construct is a static inheritance function
+   * @return {Function} constructor function
+   */
+  Truss.construct = function (props) {
 
-    // Make the new constructor call the parent with its arguments
+    var parent = this;
+
+    // The new constructor Function invokes the parent with arguments
+    // passed on instantiation of this constructor
     function F () {
       return parent.call(this, [].slice.call(arguments)[0]);
     }
 
-    // Add any static properties from the parent to the new constructor
-    for (j in parent) {
-      F[j] = parent[j];
-    }
+    // Build the prototype from parent.prototype and the props arg.
+    F.prototype = Truss.mixin( Truss.mixin( {}, parent.prototype ), props );
+    // Augment the constructor with the parent.
+    F.prototype.constructor = Truss.mixin( F, parent );
 
-    // Make the constructor prototype
-    F.prototype = other;
-    F.prototype.constructor = F;
-
-    // Blamo!!
+    // Retun the constructor
     return F;
   };
 
-  Truss.construct = construct;
+  // Augment the Truss constructor prototype with the 
+  // properties of EventEmitter;
+  Truss.mixin(Truss.prototype, EventEmitter);
 
+  // Export Truss Node AMD style
   exports.Truss = Truss;
 
 });
